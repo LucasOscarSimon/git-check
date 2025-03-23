@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# =============================================================
+# git-files-status
+# -------------------------------------------------------------
+# Generates a versioned report of Git files:
+# - Classifies as "ignored" / "not_ignored"
+# - Distinguishes "tracked" / "untracked"
+# - Saves in Markdown by default
+# - Optionally in CSV with --csv
+# - Optionally prints to console with --show
+# - Includes a summary with counts and percentages
+# =============================================================
+
+OUTPUT_DIR="reports"
+mkdir -p "$OUTPUT_DIR"
+
+SHOW_OUTPUT=false
+EXPORT_CSV=false
+
+# Verifies that we're inside a Git repository
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  echo "❌ Error: This is not a Git repository."
+  exit 1
+fi
+
+# Argument parsing
+for arg in "$@"; do
+  case $arg in
+    --show) SHOW_OUTPUT=true ;;
+    --csv) EXPORT_CSV=true ;;
+    --help)
+      echo "Usage: git-files-status [--show] [--csv]"
+      exit 0 ;;
+  esac
+done
+
+echo "🔍 Starting Git file analysis..."
+
+# Versioning
+existing_count=$(find "$OUTPUT_DIR" -maxdepth 1 -name "git_files_report_v*.md" | wc -l)
+next_version=$((existing_count + 1))
+OUTPUT_MD="$OUTPUT_DIR/git_files_report_v${next_version}.md"
+OUTPUT_CSV="$OUTPUT_DIR/git_files_report_v${next_version}.csv"
+
+# Data structures
+entries=()
+ignored_count=0
+not_ignored_count=0
+tracked_count=0
+untracked_count=0
+
+# Declare an associative array to avoid processing duplicate files
+declare -A processed_files
+
+# Get ignored files (untracked + ignored)
+while IFS= read -r file; do
+  entries+=("$file,ignored,untracked_ignored")
+  processed_files["$file"]=1
+  ((ignored_count++))
+done < <(git ls-files --others --ignored --exclude-standard)
+
+# Get tracked files
+while IFS= read -r file; do
+  if [[ -z "${processed_files[$file]}" ]]; then
+    entries+=("$file,not_ignored,tracked")
+    processed_files["$file"]=1
+    ((not_ignored_count++))
+    ((tracked_count++))
+  fi
+done < <(git ls-files --cached)
+
+# Get untracked files (not ignored)
+while IFS= read -r file; do
+  if [[ -z "${processed_files[$file]}" ]]; then
+    entries+=("$file,not_ignored,untracked")
+    processed_files["$file"]=1
+    ((not_ignored_count++))
+    ((untracked_count++))
+  fi
+done < <(git ls-files --others --exclude-standard)
+
+# Totals
+total_files=$((ignored_count + not_ignored_count))
+ignored_percent=$((ignored_count * 100 / total_files))
+not_ignored_percent=$((not_ignored_count * 100 / total_files))
+
+# Console output
+if $SHOW_OUTPUT; then
+  echo ""
+  echo "📊 Summary:"
+  echo "→ Total files: $total_files"
+  echo "→ Ignored: $ignored_count ($ignored_percent%)"
+  echo "→ Not ignored: $not_ignored_count ($not_ignored_percent%)"
+  echo "  → Tracked: $tracked_count"
+  echo "  → Untracked: $untracked_count"
+  echo ""
+  echo "📄 Git file status:"
+  printf "%s\n" "${entries[@]}"
+fi
+
+# Generate Markdown output
+{
+  echo "# Git Files Report (v${next_version})"
+  echo ""
+  echo "> 🧾 Summary: $total_files total files"
+  echo "> • Ignored: $ignored_count (${ignored_percent}%)"
+  echo "> • Not Ignored: $not_ignored_count (${not_ignored_percent}%)"
+  echo ">   • Tracked: $tracked_count"
+  echo ">   • Untracked: $untracked_count"
+  echo ""
+  echo "| File | Status | Type |"
+  echo "|------|--------|------|"
+  for entry in "${entries[@]}"; do
+    IFS=',' read -r file status type <<< "$entry"
+    echo "| $file | $status | $type |"
+  done
+} > "$OUTPUT_MD"
+
+echo "📝 Markdown report saved to: $OUTPUT_MD"
+
+# Optional CSV output
+if $EXPORT_CSV; then
+  {
+    echo "file,status,type"
+    for entry in "${entries[@]}"; do
+      echo "$entry"
+    done
+  } > "$OUTPUT_CSV"
+  echo "📁 CSV report saved to: $OUTPUT_CSV"
+fi
+
+echo "✅ Analysis complete."
