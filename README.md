@@ -6,6 +6,15 @@ Also supports printing the results directly in the terminal.
 
 ---
 
+## 🧠 Why this tool?
+
+- 🔍 Know exactly what's being tracked, ignored, or floating around untracked
+- 💡 Clean up clutter or misconfigured `.gitignore`
+- 🤝 Useful in audits, onboarding, or for personal clarity in large repos
+- 🤖 Easy to feed into ChatGPT or other tools for further analysis
+
+---
+
 ## 🚀 Features
 
 - ✅ Detects if you're inside a Git repository
@@ -137,12 +146,3 @@ tmp/log.txt,not_ignored,untracked
 
 - Git installed and available in your `$PATH`
 - Must be run inside a Git repository
-
----
-
-## 🧠 Why this tool?
-
-- 🔍 Know exactly what's being tracked, ignored, or floating around untracked
-- 💡 Clean up clutter or misconfigured `.gitignore`
-- 🤝 Useful in audits, onboarding, or for personal clarity in large repos
-- 🤖 Easy to feed into ChatGPT or other tools for further analysis
