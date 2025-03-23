@@ -1,3 +1,5 @@
+![Logo del proyecto](logo.svg)
+
 # 🔍 git-files-status
 
 A simple, extensible command-line tool to analyze which files in a Git repository are **ignored**, **tracked**, or **untracked**.  
